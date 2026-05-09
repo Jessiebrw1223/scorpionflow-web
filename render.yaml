@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: scorpionflow-api
+    runtime: docker
+    rootDir: backend/ScorpionFlow.Api
+    plan: starter
+    autoDeploy: true
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://0.0.0.0:${PORT}
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
+      - key: Supabase__Url
+        sync: false
+      - key: Supabase__JwtIssuer
+        sync: false
+      - key: Supabase__JwtAudience
+        value: authenticated
+      - key: Cors__AllowedOrigins__0
+        value: https://scorpion-flow.com
+      - key: Cors__AllowedOrigins__1
+        value: https://scorpionflow-web.vercel.app

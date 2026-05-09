@@ -1,0 +1,40 @@
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using ScorpionFlow.Api.Data;
+using ScorpionFlow.Api.Middleware;
+using ScorpionFlow.Api.Modules.Health;
+using ScorpionFlow.Api.Modules.Projects;
+using ScorpionFlow.Api.Modules.Reports;
+using ScorpionFlow.Api.Modules.Workspace;
+using ScorpionFlow.Api.Security;
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<CurrentUser>();
+builder.Services.AddSingleton<DbConnectionFactory>();
+builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull);
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+builder.Services.AddCors(options => options.AddPolicy("ScorpionFlowCors", policy => policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod()));
+var issuer = builder.Configuration["Supabase:JwtIssuer"];
+var audience = builder.Configuration["Supabase:JwtAudience"] ?? "authenticated";
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
+{
+    options.Authority = issuer;
+    options.Audience = audience;
+    options.RequireHttpsMetadata = true;
+    options.TokenValidationParameters = new TokenValidationParameters { ValidateIssuer = true, ValidIssuer = issuer, ValidateAudience = true, ValidAudience = audience, ValidateLifetime = true, ValidateIssuerSigningKey = true };
+});
+builder.Services.AddAuthorization();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+var app = builder.Build();
+app.UseMiddleware<ErrorHandlingMiddleware>();
+app.UseCors("ScorpionFlowCors");
+app.UseAuthentication();
+app.UseAuthorization();
+if (!app.Environment.IsProduction()) { app.UseSwagger(); app.UseSwaggerUI(); }
+app.MapHealthEndpoints();
+app.MapWorkspaceEndpoints();
+app.MapProjectEndpoints();
+app.MapReportsEndpoints();
+app.Run();
